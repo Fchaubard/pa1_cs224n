@@ -9,6 +9,7 @@ import java.util.List;
  * 
  * @author Colin Mayer
  */
+
 public class PMIModel implements WordAligner {
 
 	// Count of sentence pairs that contain source and target words
