@@ -74,7 +74,7 @@ public class IBM1 implements WordAligner {
 		while(!converged){
 			count++;
 
-			setAllInCounterMap(trainingPairs,target_source_count,0.0);
+			target_source_count = new CounterMap<String,String>(); 
 			
 			//For each sentence pair increment the counters
 			for(SentencePair pair : trainingPairs){
@@ -83,7 +83,7 @@ public class IBM1 implements WordAligner {
 				//Add a Null word to the source list
 				sourceWords.add(NULL_WORD);
 				for(String source : sourceWords){
-					posterior_sum=0;
+					posterior_sum = 0.0;
 					for(String target : targetWords){
 						posterior_sum+=target_source_prob.getCount(target, source);
 					}
