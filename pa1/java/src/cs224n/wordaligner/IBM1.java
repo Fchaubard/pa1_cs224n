@@ -107,15 +107,13 @@ public class IBM1 implements WordAligner {
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
 				List<String> sourceWords = pair.getSourceWords();
-				//Add a Null word to the source list
-				sourceWords.add(NULL_WORD);
 				for(String source : sourceWords){
 					for(String target : targetWords){
 						error += Math.pow(target_source_count.getCount(target, source) - target_source_prob.getCount(target, source) ,2);
 					}
 				}
 			}
-			if (error<10 | count > 100){
+			if (error < 1 | count > 100){
 				converged=true;
 			}
 			
