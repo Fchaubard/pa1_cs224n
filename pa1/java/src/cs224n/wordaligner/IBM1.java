@@ -12,7 +12,7 @@ import java.util.List;
 public class IBM1 implements WordAligner {
 
 	// Count of sentence pairs that contain source and target words
-	private CounterMap<String,String> target_source_prob; // p(f|e)
+	private CounterMap<String,String> source_target_prob; // p(f|e)
 	// Count of source words appearing in the training set
 	//private Counter<String> source_count;
 
@@ -29,7 +29,7 @@ public class IBM1 implements WordAligner {
 			int maxSourceIdx = 0;
 			for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 				String source = sentencePair.getSourceWords().get(srcIndex);
-				double ai = target_source_prob.getCount(target, source) ;
+				double ai = source_target_prob.getCount(source, target) ;
 
 				if (currentMax < ai){
 					currentMax = ai;
@@ -50,7 +50,7 @@ public class IBM1 implements WordAligner {
 			sourceWords.add(NULL_WORD);
 			for(String source : sourceWords){
 				for(String target : targetWords){
-					counterMap.setCount(target,  source, initValue);
+					counterMap.setCount(source, target, initValue);
 				}
 			}
 		}
@@ -58,39 +58,39 @@ public class IBM1 implements WordAligner {
 	
 	public void train(List<SentencePair> trainingPairs) {
 		//Initalize counters
-		target_source_prob= new CounterMap<String,String>(); // p(f|e)
-		CounterMap<String,String> target_source_count = new CounterMap<String,String>(); // c(f|e)
+		source_target_prob= new CounterMap<String,String>(); // p(f|e)
+		CounterMap<String,String> source_target_count = new CounterMap<String,String>(); // c(f|e)
 		boolean converged = false;
 		
 		// initialize the probability to uniform
-		setAllInCounterMap(trainingPairs,target_source_prob,1.0);
-		target_source_prob = Counters.conditionalNormalize(target_source_prob);
+		setAllInCounterMap(trainingPairs,source_target_prob,1.0);
+		source_target_prob = Counters.conditionalNormalize(source_target_prob);
 		
 		double posterior_sum = 0.0;
 		int count=0;
 		while(!converged){
 			count++;
 
-			target_source_count = new CounterMap<String,String>(); 
+			source_target_count = new CounterMap<String,String>(); 
 			
 			//For each sentence pair increment the counters
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
 				List<String> sourceWords = pair.getSourceWords();
-				for(String source : sourceWords){
+				for(String target : targetWords){
 					posterior_sum = 0.0;
-					for(String target : targetWords){
-						posterior_sum+=target_source_prob.getCount(target, source);
+					for(String source : sourceWords){
+						posterior_sum+=source_target_prob.getCount(source, target);
 					}
 							
-					for(String target : targetWords){
-						target_source_count.incrementCount(target, source,  (target_source_prob.getCount(target, source)/posterior_sum));
+					for(String source : sourceWords){
+						source_target_count.incrementCount(source, target,  (source_target_prob.getCount(source, target)/posterior_sum));
 					}
 				}
 			}
 			
 			// normalize the probabilities
-			target_source_count = Counters.conditionalNormalize(target_source_count);
+			source_target_count = Counters.conditionalNormalize(source_target_count);
 			
 			// check if converged
 			double error =0.0;
@@ -99,7 +99,7 @@ public class IBM1 implements WordAligner {
 				List<String> sourceWords = pair.getSourceWords();
 				for(String source : sourceWords){
 					for(String target : targetWords){
-						error += Math.pow(target_source_count.getCount(target, source) - target_source_prob.getCount(target, source) ,2);
+						error += Math.pow(source_target_count.getCount(source, target) - source_target_prob.getCount(source, target) ,2);
 					}
 				}
 			}
@@ -107,7 +107,7 @@ public class IBM1 implements WordAligner {
 				converged=true;
 			}
 			
-			target_source_prob = target_source_count;
+			source_target_prob = source_target_count;
 				
 			System.out.printf("iteration number %d  error %f \n", count, error );
 			
