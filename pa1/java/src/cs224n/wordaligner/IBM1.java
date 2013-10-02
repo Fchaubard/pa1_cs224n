@@ -37,11 +37,7 @@ public class IBM1 implements WordAligner {
 				}
 			}
 			
-			//If probability of an alignment is greater than P(source, NULL)
-			if (currentMax > target_source_prob.getCount(target,NULL_WORD)) {
-				// Add the alignment
-				alignment.addPredictedAlignment(targetIdx, maxSourceIdx);
-			} 
+			alignment.addPredictedAlignment(targetIdx, maxSourceIdx);
 		}
 		return alignment;
 	}
@@ -88,15 +84,9 @@ public class IBM1 implements WordAligner {
 					}
 							
 					for(String target : targetWords){
-						if (posterior_sum == 0){
-							System.out.println(target + ":" + source);
-						}
 						target_source_count.incrementCount(target, source,  (target_source_prob.getCount(target, source)/posterior_sum));
-						
 					}
 				}
-				
-				
 			}
 			
 			// normalize the probabilities
@@ -113,7 +103,7 @@ public class IBM1 implements WordAligner {
 					}
 				}
 			}
-			if (error < 1 | count > 100){
+			if (error < 0.5 | count > 100){
 				converged=true;
 			}
 			

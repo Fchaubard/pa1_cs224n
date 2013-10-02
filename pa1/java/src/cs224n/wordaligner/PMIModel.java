@@ -37,12 +37,8 @@ public class PMIModel implements WordAligner {
 					maxSourceIdx = srcIndex;
 				}
 			}
-			
-			//If probability of an alignment is greater than P(source, NULL)
-			if (currentMax > source_target_count.getCount(NULL_WORD,target) / source_count.getCount(NULL_WORD)) {
-				// Add the alignment
-				alignment.addPredictedAlignment(targetIdx, maxSourceIdx);
-			} 
+			// Add the alignment
+			alignment.addPredictedAlignment(targetIdx, maxSourceIdx);
 		}
 		return alignment;
 	}
