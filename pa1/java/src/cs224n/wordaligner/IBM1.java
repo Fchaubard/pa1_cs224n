@@ -59,9 +59,10 @@ public class IBM1 implements WordAligner {
 			}
 		}
 	}
+	
 	public void train(List<SentencePair> trainingPairs) {
 		//Initalize counters
-		target_source_prob= new CounterMap<String,String>();; // p(f|e)
+		target_source_prob= new CounterMap<String,String>(); // p(f|e)
 		CounterMap<String,String> target_source_count = new CounterMap<String,String>(); // c(f|e)
 		boolean converged = false;
 		
@@ -80,8 +81,6 @@ public class IBM1 implements WordAligner {
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
 				List<String> sourceWords = pair.getSourceWords();
-				//Add a Null word to the source list
-				sourceWords.add(NULL_WORD);
 				for(String source : sourceWords){
 					posterior_sum = 0.0;
 					for(String target : targetWords){
@@ -89,7 +88,9 @@ public class IBM1 implements WordAligner {
 					}
 							
 					for(String target : targetWords){
-						
+						if (posterior_sum == 0){
+							System.out.println(target + ":" + source);
+						}
 						target_source_count.incrementCount(target, source,  (target_source_prob.getCount(target, source)/posterior_sum));
 						
 					}
@@ -114,7 +115,7 @@ public class IBM1 implements WordAligner {
 					}
 				}
 			}
-			if (error<10){
+			if (error<10 | count > 100){
 				converged=true;
 			}
 			
