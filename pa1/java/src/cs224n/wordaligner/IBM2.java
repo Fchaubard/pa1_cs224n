@@ -2,6 +2,7 @@ package cs224n.wordaligner;
 
 import cs224n.util.*;
 import java.util.List;
+import java.util.Random;
 
 /**
  * IBM2 models the problem 
@@ -32,7 +33,7 @@ public class IBM2 implements WordAligner {
 			int maxSourceIdx = 0;
 			for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 				String source = sentencePair.getSourceWords().get(srcIndex);
-				double ai = target_source_prob.getCount(target, source) ;
+				double ai = l_m_i_j_qML.getCount(getPairOfInts(numTargetWords,numSourceWords),getPairOfInts(srcIndex,targetIdx)) * target_source_tML.getCount(target, source) ;
 
 				if (currentMax < ai){
 					currentMax = ai;
@@ -133,6 +134,7 @@ public class IBM2 implements WordAligner {
 		// init l_m_i_j_count with Model 1 results
 		CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
 		System.out.printf("Starting Model 2 \n" );
+		Random randomGenerator = new Random();
 		for(SentencePair pair : trainingPairs){
 			
 			int numSourceWords = pair.getSourceWords().size();
@@ -153,12 +155,12 @@ public class IBM2 implements WordAligner {
 					}
 				}
 				
-				l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords,numSourceWords),    
-											 getPairOfInts(maxSourceIdx, targetIdx ),1);
+				//l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(maxSourceIdx, targetIdx ),1);
+				l_m_i_j_count.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(maxSourceIdx, targetIdx ),randomGenerator.nextInt(100));
 			}
 		}// sentences
 		
-		// now init qML
+		// now init qML randomly
 		for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
 			
 			double counter_ilm = 0;
@@ -183,7 +185,15 @@ public class IBM2 implements WordAligner {
 		
 		// begin training Model 2
 		for (int c=0; c<2000; c++ ){ // when to break out of loop TODO make this better
-			System.out.printf("%d ",c );
+			
+			
+			// target_source_count = 0s
+			target_source_count = new CounterMap<String,String>(); // c(f|e)
+			
+			// l_m_i_j_count = 0s
+			l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
+			
+			
 			for(SentencePair pair : trainingPairs){
 				
 				int numSourceWords = pair.getSourceWords().size();
@@ -204,7 +214,7 @@ public class IBM2 implements WordAligner {
 						}
 					}
 					
-					// perform delta = ... 
+					// find delta = ... 
 					
 					double count_ijlm =  l_m_i_j_count.getCount(getPairOfInts(numTargetWords, numSourceWords ),    
 																getPairOfInts(maxSourceIdx,targetIdx));
@@ -242,7 +252,7 @@ public class IBM2 implements WordAligner {
 			}
 			target_source_prob=target_source_count;
 			//TODO print some stuff so we know how we are doing
-			System.out.printf("error %f\n ", error);
+			System.out.printf("%d error %f\n ",c, error);
 		}
 					
 		System.out.printf("Finished training IBM2\n ");
