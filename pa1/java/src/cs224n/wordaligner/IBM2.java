@@ -117,15 +117,22 @@ public class IBM2 implements WordAligner {
 			
 		}// while for Model 1
 		
-			
-		// set 
+		System.out.printf("Finished with Model 1 \n" );
+		
+		
+		
+		
+		
+		// setup for Model 2
 		l_m_i_j_qML = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
 		target_source_tML = new CounterMap<String,String>();
+		
 		// init t to probs from model 1
 		target_source_tML = target_source_prob;
-			
+		
 		// init l_m_i_j_count with Model 1 results
 		CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
+		System.out.printf("Starting Model 2 \n" );
 		for(SentencePair pair : trainingPairs){
 			
 			int numSourceWords = pair.getSourceWords().size();
@@ -157,17 +164,14 @@ public class IBM2 implements WordAligner {
 			double counter_ilm = 0;
 			
 			for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-				
 				counter_ilm += l_m_i_j_count.getCount(key1, key2);
 			}
 			for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-				
 				l_m_i_j_qML.setCount(key1, key2, ( l_m_i_j_count.getCount(key1, key2) /counter_ilm) );
-				
 			}
 			
 		}// sentences
-		
+		System.out.printf("Finished init for Model 2 \n" );
 		
 		// end of init
 		
@@ -178,7 +182,8 @@ public class IBM2 implements WordAligner {
 		
 		
 		// begin training Model 2
-		for (int c=0; c<2000;c++ ){ // when to break out of loop TODO make this better
+		for (int c=0; c<2000; c++ ){ // when to break out of loop TODO make this better
+			System.out.printf("%d ",c );
 			for(SentencePair pair : trainingPairs){
 				
 				int numSourceWords = pair.getSourceWords().size();
@@ -199,29 +204,48 @@ public class IBM2 implements WordAligner {
 						}
 					}
 					
+					// perform delta = ... 
+					
 					double count_ijlm =  l_m_i_j_count.getCount(getPairOfInts(numTargetWords, numSourceWords ),    
 																getPairOfInts(maxSourceIdx,targetIdx));
-					double delta_denominator_sum =0.0;
+					double delta_denominator_sum = 0.0;
 					for (int targ = 0; targ < numTargetWords; targ++) {
 						delta_denominator_sum +=l_m_i_j_count.getCount(getPairOfInts(numTargetWords,numSourceWords),    
 																		getPairOfInts(maxSourceIdx,targ)) *
 												target_source_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(maxSourceIdx) );
 					}
-					double newCount = count_ijlm *  target_source_tML.getCount( target, pair.getSourceWords().get(maxSourceIdx)  ) / delta_denominator_sum;
+					double newCount_ijlm = count_ijlm *  target_source_tML.getCount( target, pair.getSourceWords().get(maxSourceIdx)  ) / delta_denominator_sum;
 					
 					l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
-							                     getPairOfInts(maxSourceIdx, targetIdx ), newCount);
+							                     getPairOfInts(maxSourceIdx, targetIdx ), newCount_ijlm);
+					
+					target_source_count.incrementCount(pair.getTargetWords().get(targetIdx), pair.getSourceWords().get(maxSourceIdx),newCount_ijlm);
 	
 				}
 				
 			}// sentences
 			
-			// do we need to represent c(jilm) and c(ilm) seperately as well do we need to rep c(f,e) and c(e) separately?
+			//normalize count to become probs
+			target_source_count = Counters.conditionalNormalize(target_source_count);
 			
+			
+			// do we need to represent c(jilm) and c(ilm) seperately as well do we need to rep c(f,e) and c(e) separately?
+			double error =0.0;
+			for(SentencePair pair : trainingPairs){
+				List<String> targetWords = pair.getTargetWords();
+				List<String> sourceWords = pair.getSourceWords();
+				for(String source : sourceWords){
+					for(String target : targetWords){
+						error += Math.pow(target_source_count.getCount(target, source) - target_source_count.getCount(target, source) ,2);
+					}
+				}
+			}
+			target_source_prob=target_source_count;
 			//TODO print some stuff so we know how we are doing
+			System.out.printf("error %f\n ", error);
 		}
 					
-		
+		System.out.printf("Finished training IBM2\n ");
 		
 	}
 	
