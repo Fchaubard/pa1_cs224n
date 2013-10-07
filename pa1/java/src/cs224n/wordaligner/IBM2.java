@@ -133,6 +133,7 @@ public class IBM2 implements WordAligner {
 		
 		// init l_m_i_j_count randomly
 		CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
+		CounterMap<Pair<Integer,Integer>,Integer> l_m_i_count = new CounterMap<Pair<Integer,Integer>,Integer>(); // c(i,l,m), TargLength, SourceLegnth, SourceIdx
 		
 		System.out.printf("Starting Model 2 \n" );
 		Random randomGenerator = new Random();
@@ -157,7 +158,6 @@ public class IBM2 implements WordAligner {
 		// now init qML randomly by normalizing out l_m_i_j_count
 		for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
 			
-			
 			for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
 				
 				double counter_ilm = 0;
@@ -165,9 +165,9 @@ public class IBM2 implements WordAligner {
 				for (Pair<Integer,Integer> key2_sum_out: l_m_i_j_count.getCounter(key1).keySet()){
 					counter_ilm += l_m_i_j_count.getCount(key1,getPairOfInts(key2.getFirst(), key2_sum_out.getSecond()) );
 				}
+				l_m_i_count.setCount(key1,key2.getFirst(),counter_ilm);
 				l_m_i_j_qML.setCount(key1, key2, l_m_i_j_count.getCount(key1, key2) / counter_ilm);
 			}
-			
 			
 		}// sentences
 		System.out.printf("Finished init for Model 2 \n" );
@@ -188,7 +188,8 @@ public class IBM2 implements WordAligner {
 			target_source_count = new CounterMap<String,String>(); // c(f|e)
 			
 			// l_m_i_j_count = 0s
-			l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
+			l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(j|i m l) TargLength, SourceLength, SourceIdx, TargetIdx
+			l_m_i_count = new CounterMap<Pair<Integer,Integer>,Integer>(); // c(i,l,m), TargLength, SourceLegnth, SourceIdx
 			
 			
 			for(SentencePair pair : trainingPairs){
@@ -212,6 +213,8 @@ public class IBM2 implements WordAligner {
 						// add delta to the two counters
 						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
 								                     getPairOfInts(srcIndex, targetIdx ), delta_ijlm);
+						l_m_i_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
+			                     					Integer.valueOf(srcIndex), delta_ijlm);
 						
 						target_source_count.incrementCount(pair.getTargetWords().get(targetIdx), pair.getSourceWords().get(srcIndex),delta_ijlm);
 						//System.out.printf(" denom %f  delta %f  tML %f \n ", delta_denominator_sum, delta_ijlm, target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
@@ -245,11 +248,7 @@ public class IBM2 implements WordAligner {
 				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
 					double counter_ilm = 0;
 					// summing over target indexes (english aka j)
-					for (Pair<Integer,Integer> key2_sum_out: l_m_i_j_count.getCounter(key1).keySet()){
-						counter_ilm += l_m_i_j_count.getCount(key1,getPairOfInts(key2.getFirst(), key2_sum_out.getSecond()) );
-					}
-					error2 += Math.pow(  l_m_i_j_qML.getCount(key1, key2)   -   l_m_i_j_count.getCount(key1, key2) / counter_ilm  ,2);
-					
+					error2 += Math.pow(  l_m_i_j_qML.getCount(key1, key2)   -   l_m_i_j_count.getCount(key1, key2) / l_m_i_count.getCount(key1,key2.getFirst())  ,2);
 				}
 				
 			}// sentences
@@ -269,10 +268,7 @@ public class IBM2 implements WordAligner {
 					
 					double counter_ilm = 0;
 					// summing over target indexes (english aka j)
-					for (Pair<Integer,Integer> key2_sum_out: l_m_i_j_count.getCounter(key1).keySet()){
-						counter_ilm += l_m_i_j_count.getCount(key1,getPairOfInts(key2.getFirst(), key2_sum_out.getSecond()) );
-					}
-					l_m_i_j_qML.setCount(key1, key2, l_m_i_j_count.getCount(key1, key2) / counter_ilm);
+					l_m_i_j_qML.setCount(key1, key2, l_m_i_j_count.getCount(key1, key2) / l_m_i_count.getCount(key1,key2.getFirst()) );
 				}
 				
 				
