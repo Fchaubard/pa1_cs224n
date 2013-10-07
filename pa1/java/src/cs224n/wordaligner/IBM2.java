@@ -59,6 +59,7 @@ public class IBM2 implements WordAligner {
 			}
 		}
 	}
+
 	
 	public void train(List<SentencePair> trainingPairs) {
 		//Initalize counters
@@ -147,7 +148,7 @@ public class IBM2 implements WordAligner {
 				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 					
 					// initially set count to be random numbers
-					l_m_i_j_count.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ),randomGenerator.nextInt(100));
+					l_m_i_j_qML.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ),1/numSourceWords);
 					
 				}
 				
@@ -156,6 +157,7 @@ public class IBM2 implements WordAligner {
 		}// sentences
 		
 		// now init qML randomly by normalizing out l_m_i_j_count
+		/*
 		for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
 			
 			for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
@@ -170,6 +172,8 @@ public class IBM2 implements WordAligner {
 			}
 			
 		}// sentences
+		
+		*/
 		System.out.printf("Finished init for Model 2 \n" );
 		
 		// end of init
@@ -177,12 +181,12 @@ public class IBM2 implements WordAligner {
 		
 		
 		
-		
-		
+		converged = false;
+		count=0;
 		
 		// begin training Model 2
-		for (int c=0; c<200; c++ ){ // when to break out of loop TODO make this better
-			
+		while (!converged){
+			count++;
 			
 			// target_source_count = 0s
 			target_source_count = new CounterMap<String,String>(); // c(f|e)
@@ -190,7 +194,6 @@ public class IBM2 implements WordAligner {
 			// l_m_i_j_count = 0s
 			l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(j|i m l) TargLength, SourceLength, SourceIdx, TargetIdx
 			l_m_i_count = new CounterMap<Pair<Integer,Integer>,Integer>(); // c(i,l,m), TargLength, SourceLegnth, SourceIdx
-			
 			
 			for(SentencePair pair : trainingPairs){
 				
@@ -200,10 +203,10 @@ public class IBM2 implements WordAligner {
 				for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 					String target = pair.getTargetWords().get(targetIdx);
 					
-					
 					for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 						// find delta = ... 
 						double delta_denominator_sum = 0.0;
+						// sum over the target words
 						for (int targ = 0; targ < numTargetWords; targ++) {
 							delta_denominator_sum += target_source_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(srcIndex) );
 						}
@@ -217,10 +220,10 @@ public class IBM2 implements WordAligner {
 			                     					Integer.valueOf(srcIndex), delta_ijlm);
 						
 						target_source_count.incrementCount(pair.getTargetWords().get(targetIdx), pair.getSourceWords().get(srcIndex),delta_ijlm);
+						
 						//System.out.printf(" denom %f  delta %f  tML %f \n ", delta_denominator_sum, delta_ijlm, target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
 						
 					}
-					
 					
 				}
 				
@@ -244,18 +247,19 @@ public class IBM2 implements WordAligner {
 			}
 			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
 				
-				
 				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-					double counter_ilm = 0;
+					
 					// summing over target indexes (english aka j)
 					error2 += Math.pow(  l_m_i_j_qML.getCount(key1, key2)   -   l_m_i_j_count.getCount(key1, key2) / l_m_i_count.getCount(key1,key2.getFirst())  ,2);
 				}
 				
 			}// sentences
 			
-			
+			if ((error1+error2) < 0.00003 | count > 1000){
+				converged=true;
+			}
 			//TODO print some stuff so we know how we are doing
-			System.out.printf("%d error1 %f error2 %f\n ",c, error1,error2);
+			System.out.printf("%d error1 %f error2 %f\n ",count, error1,error2);
 			
 			// update tML
 			target_source_tML=target_source_count;
@@ -263,17 +267,14 @@ public class IBM2 implements WordAligner {
 			// update qML
 			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
 				
-				
 				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
 					
-					double counter_ilm = 0;
 					// summing over target indexes (english aka j)
 					l_m_i_j_qML.setCount(key1, key2, l_m_i_j_count.getCount(key1, key2) / l_m_i_count.getCount(key1,key2.getFirst()) );
 				}
 				
-				
 			}// sentences
-		}
+		}// while converge loop
 					
 		System.out.printf("Finished training IBM2\n ");
 		
