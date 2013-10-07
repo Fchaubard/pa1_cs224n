@@ -82,6 +82,7 @@ public class IBM2 implements WordAligner {
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
 				List<String> sourceWords = pair.getSourceWords();
+				
 				for(String source : sourceWords){
 					posterior_sum = 0.0;
 					for(String target : targetWords){
@@ -139,9 +140,11 @@ public class IBM2 implements WordAligner {
 		System.out.printf("Starting Model 2 \n" );
 		Random randomGenerator = new Random();
 		for(SentencePair pair : trainingPairs){
-			
+			List<String> sourceWords = pair.getSourceWords();
+			//Add a Null word to the source list
+			sourceWords.add(NULL_WORD);
 			int numSourceWords = pair.getSourceWords().size();
-			int numTargetWords = pair.getTargetWords().size();
+			int numTargetWords = sourceWords.size();
 				
 			for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 				
@@ -196,10 +199,12 @@ public class IBM2 implements WordAligner {
 			l_m_i_count = new CounterMap<Pair<Integer,Integer>,Integer>(); // c(i,l,m), TargLength, SourceLegnth, SourceIdx
 			
 			for(SentencePair pair : trainingPairs){
+				List<String> sourceWords = pair.getSourceWords();
+				//Add a Null word to the source list
 				
+				sourceWords.add(NULL_WORD);
 				int numSourceWords = pair.getSourceWords().size();
-				int numTargetWords = pair.getTargetWords().size();
-				
+				int numTargetWords = sourceWords.size();
 				for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 					String target = pair.getTargetWords().get(targetIdx);
 					
@@ -232,7 +237,6 @@ public class IBM2 implements WordAligner {
 			//normalize count to become probs .. we dont set it directly to tML because we want to check for convergence.. we will do it later
 			target_source_count = Counters.conditionalNormalize(target_source_count);
 			
-			
 			// do we need to represent c(jilm) and c(ilm) seperately as well do we need to rep c(f,e) and c(e) separately?
 			double error1=0.0;
 			double error2 =0.0;
@@ -255,14 +259,14 @@ public class IBM2 implements WordAligner {
 				
 			}// sentences
 			
-			if ((error1+error2) < 0.00003 | count > 1000){
+			if (((error1+error2) < 0.004) | (count > 200)){
 				converged=true;
 			}
 			//TODO print some stuff so we know how we are doing
 			System.out.printf("%d error1 %f error2 %f\n ",count, error1,error2);
 			
 			// update tML
-			target_source_tML=target_source_count;
+			target_source_tML = target_source_count;
 			
 			// update qML
 			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
