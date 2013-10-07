@@ -131,7 +131,7 @@ public class IBM2 implements WordAligner {
 		// init t to probs from model 1
 		target_source_tML = target_source_prob;
 		
-		// init l_m_i_j_count with Model 1 results
+		// init l_m_i_j_count randomly
 		CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
 		
 		System.out.printf("Starting Model 2 \n" );
@@ -145,6 +145,7 @@ public class IBM2 implements WordAligner {
 				
 				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 					
+					// initially set count to be random numbers
 					l_m_i_j_count.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ),randomGenerator.nextInt(100));
 					
 				}
@@ -153,17 +154,20 @@ public class IBM2 implements WordAligner {
 			}
 		}// sentences
 		
-		// now init qML randomly
+		// now init qML randomly by normalizing out l_m_i_j_count
 		for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
 			
-			double counter_ilm = 0;
 			
 			for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-				counter_ilm += l_m_i_j_count.getCount(key1, key2);
+				
+				double counter_ilm = 0;
+				// summing over target indexes (english aka j)
+				for (Pair<Integer,Integer> key2_sum_out: l_m_i_j_count.getCounter(key1).keySet()){
+					counter_ilm += l_m_i_j_count.getCount(key1,getPairOfInts(key2.getFirst(), key2_sum_out.getSecond()) );
+				}
+				l_m_i_j_qML.setCount(key1, key2, l_m_i_j_count.getCount(key1, key2) / counter_ilm);
 			}
-			for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-				l_m_i_j_qML.setCount(key1, key2, ( l_m_i_j_count.getCount(key1, key2) /counter_ilm) );
-			}
+			
 			
 		}// sentences
 		System.out.printf("Finished init for Model 2 \n" );
@@ -177,7 +181,7 @@ public class IBM2 implements WordAligner {
 		
 		
 		// begin training Model 2
-		for (int c=0; c<2000; c++ ){ // when to break out of loop TODO make this better
+		for (int c=0; c<200; c++ ){ // when to break out of loop TODO make this better
 			
 			
 			// target_source_count = 0s
@@ -200,21 +204,17 @@ public class IBM2 implements WordAligner {
 						// find delta = ... 
 						double delta_denominator_sum = 0.0;
 						for (int targ = 0; targ < numTargetWords; targ++) {
-							delta_denominator_sum += l_m_i_j_qML.getCount(getPairOfInts(numTargetWords,numSourceWords),    
-																			getPairOfInts(srcIndex,targ)) *
-													target_source_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(srcIndex) );
+							delta_denominator_sum += target_source_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(srcIndex) );
 						}
-						double qML_ijlm =  l_m_i_j_qML.getCount(getPairOfInts(numTargetWords, numSourceWords ),    
-								getPairOfInts(srcIndex,targetIdx));
 						
-						double delta_ijlm = qML_ijlm *  target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)  ) / delta_denominator_sum;
+						double delta_ijlm =  target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)  ) / delta_denominator_sum;
 						
 						// add delta to the two counters
 						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
 								                     getPairOfInts(srcIndex, targetIdx ), delta_ijlm);
 						
 						target_source_count.incrementCount(pair.getTargetWords().get(targetIdx), pair.getSourceWords().get(srcIndex),delta_ijlm);
-						//System.out.printf("count ijlm %f  denom %f  delta %f  tML %f \n ",qML_ijlm, delta_denominator_sum, delta_ijlm, target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
+						//System.out.printf(" denom %f  delta %f  tML %f \n ", delta_denominator_sum, delta_ijlm, target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
 						
 					}
 					
@@ -223,38 +223,60 @@ public class IBM2 implements WordAligner {
 				
 			}// sentences
 			
-			//normalize count to become probs
+			//normalize count to become probs .. we dont set it directly to tML because we want to check for convergence.. we will do it later
 			target_source_count = Counters.conditionalNormalize(target_source_count);
 			
 			
 			// do we need to represent c(jilm) and c(ilm) seperately as well do we need to rep c(f,e) and c(e) separately?
-			double error =0.0;
+			double error1=0.0;
+			double error2 =0.0;
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
 				List<String> sourceWords = pair.getSourceWords();
 				for(String source : sourceWords){
 					for(String target : targetWords){
-						error += Math.pow(target_source_count.getCount(target, source) - target_source_count.getCount(target, source) ,2);
+						error1 += Math.pow(target_source_tML.getCount(target, source) - target_source_count.getCount(target, source) ,2);
 					}
 				}
 			}
-			target_source_tML=target_source_count;
-			// update qML
 			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
 				
-				double counter_ilm = 0;
 				
 				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-					counter_ilm += l_m_i_j_count.getCount(key1, key2);
-				}
-				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-					l_m_i_j_qML.setCount(key1, key2, ( l_m_i_j_count.getCount(key1, key2) /counter_ilm) );
+					double counter_ilm = 0;
+					// summing over target indexes (english aka j)
+					for (Pair<Integer,Integer> key2_sum_out: l_m_i_j_count.getCounter(key1).keySet()){
+						counter_ilm += l_m_i_j_count.getCount(key1,getPairOfInts(key2.getFirst(), key2_sum_out.getSecond()) );
+					}
+					error2 += Math.pow(  l_m_i_j_qML.getCount(key1, key2)   -   l_m_i_j_count.getCount(key1, key2) / counter_ilm  ,2);
+					
 				}
 				
 			}// sentences
 			
+			
 			//TODO print some stuff so we know how we are doing
-			System.out.printf("%d error %f\n ",c, error);
+			System.out.printf("%d error1 %f error2 %f\n ",c, error1,error2);
+			
+			// update tML
+			target_source_tML=target_source_count;
+			
+			// update qML
+			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
+				
+				
+				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
+					
+					double counter_ilm = 0;
+					// summing over target indexes (english aka j)
+					for (Pair<Integer,Integer> key2_sum_out: l_m_i_j_count.getCounter(key1).keySet()){
+						counter_ilm += l_m_i_j_count.getCount(key1,getPairOfInts(key2.getFirst(), key2_sum_out.getSecond()) );
+					}
+					l_m_i_j_qML.setCount(key1, key2, l_m_i_j_count.getCount(key1, key2) / counter_ilm);
+				}
+				
+				
+			}// sentences
 		}
 					
 		System.out.printf("Finished training IBM2\n ");
