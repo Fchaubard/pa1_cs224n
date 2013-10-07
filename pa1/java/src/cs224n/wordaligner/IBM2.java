@@ -133,6 +133,7 @@ public class IBM2 implements WordAligner {
 		
 		// init l_m_i_j_count with Model 1 results
 		CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
+		
 		System.out.printf("Starting Model 2 \n" );
 		Random randomGenerator = new Random();
 		for(SentencePair pair : trainingPairs){
@@ -141,22 +142,14 @@ public class IBM2 implements WordAligner {
 			int numTargetWords = pair.getTargetWords().size();
 				
 			for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
-				String target = pair.getTargetWords().get(targetIdx);
-				//Find source word with maximum alignment likelihood
-				double currentMax = 0;
-				int maxSourceIdx = 0;
+				
 				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
-					String source = pair.getSourceWords().get(srcIndex);
-					double ai = target_source_prob.getCount(target, source) ;
-
-					if (currentMax < ai){
-						currentMax = ai;
-						maxSourceIdx = srcIndex;
-					}
+					
+					l_m_i_j_count.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ),randomGenerator.nextInt(100));
+					
 				}
 				
 				//l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(maxSourceIdx, targetIdx ),1);
-				l_m_i_j_count.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(maxSourceIdx, targetIdx ),randomGenerator.nextInt(100));
 			}
 		}// sentences
 		
@@ -201,36 +194,31 @@ public class IBM2 implements WordAligner {
 				
 				for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 					String target = pair.getTargetWords().get(targetIdx);
-					//Find source word with maximum alignment likelihood
-					double currentMax = 0;
-					int maxSourceIdx = 0;
+					
+					
 					for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
-						String source = pair.getSourceWords().get(srcIndex);
-						double ai = l_m_i_j_qML.getCount(getPairOfInts(numTargetWords,numSourceWords),getPairOfInts(srcIndex,targetIdx)) * target_source_tML.getCount(target, source) ;
-
-						if (currentMax < ai){
-							currentMax = ai;
-							maxSourceIdx = srcIndex;
+						// find delta = ... 
+						double delta_denominator_sum = 0.0;
+						for (int targ = 0; targ < numTargetWords; targ++) {
+							delta_denominator_sum += l_m_i_j_qML.getCount(getPairOfInts(numTargetWords,numSourceWords),    
+																			getPairOfInts(srcIndex,targ)) *
+													target_source_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(srcIndex) );
 						}
+						double qML_ijlm =  l_m_i_j_qML.getCount(getPairOfInts(numTargetWords, numSourceWords ),    
+								getPairOfInts(srcIndex,targetIdx));
+						
+						double delta_ijlm = qML_ijlm *  target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)  ) / delta_denominator_sum;
+						
+						// add delta to the two counters
+						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
+								                     getPairOfInts(srcIndex, targetIdx ), delta_ijlm);
+						
+						target_source_count.incrementCount(pair.getTargetWords().get(targetIdx), pair.getSourceWords().get(srcIndex),delta_ijlm);
+						//System.out.printf("count ijlm %f  denom %f  delta %f  tML %f \n ",qML_ijlm, delta_denominator_sum, delta_ijlm, target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
+						
 					}
 					
-					// find delta = ... 
 					
-					double count_ijlm =  l_m_i_j_count.getCount(getPairOfInts(numTargetWords, numSourceWords ),    
-																getPairOfInts(maxSourceIdx,targetIdx));
-					double delta_denominator_sum = 0.0;
-					for (int targ = 0; targ < numTargetWords; targ++) {
-						delta_denominator_sum +=l_m_i_j_count.getCount(getPairOfInts(numTargetWords,numSourceWords),    
-																		getPairOfInts(maxSourceIdx,targ)) *
-												target_source_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(maxSourceIdx) );
-					}
-					double newCount_ijlm = count_ijlm *  target_source_tML.getCount( target, pair.getSourceWords().get(maxSourceIdx)  ) / delta_denominator_sum;
-					
-					l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
-							                     getPairOfInts(maxSourceIdx, targetIdx ), newCount_ijlm);
-					
-					target_source_count.incrementCount(pair.getTargetWords().get(targetIdx), pair.getSourceWords().get(maxSourceIdx),newCount_ijlm);
-	
 				}
 				
 			}// sentences
@@ -250,7 +238,21 @@ public class IBM2 implements WordAligner {
 					}
 				}
 			}
-			target_source_prob=target_source_count;
+			target_source_tML=target_source_count;
+			// update qML
+			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
+				
+				double counter_ilm = 0;
+				
+				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
+					counter_ilm += l_m_i_j_count.getCount(key1, key2);
+				}
+				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
+					l_m_i_j_qML.setCount(key1, key2, ( l_m_i_j_count.getCount(key1, key2) /counter_ilm) );
+				}
+				
+			}// sentences
+			
 			//TODO print some stuff so we know how we are doing
 			System.out.printf("%d error %f\n ",c, error);
 		}
