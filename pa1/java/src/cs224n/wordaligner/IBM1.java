@@ -77,6 +77,7 @@ public class IBM1 implements WordAligner {
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
 				List<String> sourceWords = pair.getSourceWords();
+				
 				for(String target : targetWords){
 					posterior_sum = 0.0;
 					for(String source : sourceWords){

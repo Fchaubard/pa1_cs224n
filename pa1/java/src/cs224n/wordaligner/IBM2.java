@@ -1,10 +1,12 @@
 package cs224n.wordaligner;  
 
+
 import cs224n.util.*;
+
 import java.util.List;
 import java.util.Random;
 
-/**
+/** 
  * IBM2 models the problem 
  * 
  * @author Francois Chaubard
@@ -13,8 +15,8 @@ import java.util.Random;
 public class IBM2 implements WordAligner {
 
 	// Count of sentence pairs that contain source and target words
-	private CounterMap<String,String> target_source_prob; // p(f|e)
-	private CounterMap<String,String> target_source_tML; // t(fi|ej)
+	private CounterMap<String,String> source_target_prob; // p(f|e)
+	private CounterMap<String,String> source_target_tML; // t(fi|ej)
 	private CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_qML; // q(j|i,m,l) 
 	
 	// Count of source words appearing in the training set
@@ -33,7 +35,7 @@ public class IBM2 implements WordAligner {
 			int maxSourceIdx = 0;
 			for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 				String source = sentencePair.getSourceWords().get(srcIndex);
-				double ai = l_m_i_j_qML.getCount(getPairOfInts(numTargetWords,numSourceWords),getPairOfInts(srcIndex,targetIdx)) * target_source_tML.getCount(target, source) ;
+				double ai = l_m_i_j_qML.getCount(getPairOfInts(numTargetWords,numSourceWords),getPairOfInts(srcIndex,targetIdx)) * source_target_tML.getCount(source, target) ;
 
 				if (currentMax < ai){
 					currentMax = ai;
@@ -63,40 +65,40 @@ public class IBM2 implements WordAligner {
 	
 	public void train(List<SentencePair> trainingPairs) {
 		//Initalize counters
-		target_source_prob= new CounterMap<String,String>(); // p(f|e)
-		CounterMap<String,String> target_source_count = new CounterMap<String,String>(); // c(f|e)
+		source_target_prob= new CounterMap<String,String>(); // p(f|e)
+		CounterMap<String,String> source_target_count = new CounterMap<String,String>(); // c(f|e)
 		boolean converged = false;
 		
 		// initialize the probability to uniform
-		setAllInCounterMap(trainingPairs,target_source_prob,1.0);
-		target_source_prob = Counters.conditionalNormalize(target_source_prob);
+		setAllInCounterMap(trainingPairs,source_target_prob,1.0);
+		source_target_prob = Counters.conditionalNormalize(source_target_prob);
 		
 		double posterior_sum = 0.0;
 		int count=0;
 		while(!converged){
 			count++;
 
-			target_source_count = new CounterMap<String,String>(); 
+			source_target_count = new CounterMap<String,String>(); 
 			
 			//For each sentence pair increment the counters
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
 				List<String> sourceWords = pair.getSourceWords();
 				
-				for(String source : sourceWords){
+				for(String target : targetWords){
 					posterior_sum = 0.0;
-					for(String target : targetWords){
-						posterior_sum+=target_source_prob.getCount(target, source);
+					for(String source : sourceWords){
+						posterior_sum+=source_target_prob.getCount(source, target);
 					}
 							
-					for(String target : targetWords){
-						target_source_count.incrementCount(target, source,  (target_source_prob.getCount(target, source)/posterior_sum));
+					for(String source : sourceWords){
+						source_target_count.incrementCount(source, target,  (source_target_prob.getCount(source, target)/posterior_sum));
 					}
 				}
 			}
 			
 			// normalize the probabilities
-			target_source_count = Counters.conditionalNormalize(target_source_count);
+			source_target_count = Counters.conditionalNormalize(source_target_count);
 			
 			// check if converged
 			double error =0.0;
@@ -105,7 +107,7 @@ public class IBM2 implements WordAligner {
 				List<String> sourceWords = pair.getSourceWords();
 				for(String source : sourceWords){
 					for(String target : targetWords){
-						error += Math.pow(target_source_count.getCount(target, source) - target_source_prob.getCount(target, source) ,2);
+						error += Math.pow(source_target_count.getCount(source, target) - source_target_prob.getCount(source, target) ,2);
 					}
 				}
 			}
@@ -113,7 +115,7 @@ public class IBM2 implements WordAligner {
 				converged=true;
 			}
 			
-			target_source_prob = target_source_count;
+			source_target_prob = source_target_count;
 				
 			System.out.printf("iteration number %d  error %f \n", count, error );
 			
@@ -128,10 +130,10 @@ public class IBM2 implements WordAligner {
 		
 		// setup for Model 2
 		l_m_i_j_qML = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
-		target_source_tML = new CounterMap<String,String>();
+		source_target_tML = new CounterMap<String,String>();
 		
 		// init t to probs from model 1
-		target_source_tML = target_source_prob;
+		source_target_tML = source_target_prob;
 		
 		// init l_m_i_j_count randomly
 		CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
@@ -188,8 +190,8 @@ public class IBM2 implements WordAligner {
 		while (!converged){
 			count++;
 			
-			// target_source_count = 0s
-			target_source_count = new CounterMap<String,String>(); // c(f|e)
+			// source_target_count = 0s
+			source_target_count = new CounterMap<String,String>(); // c(f|e)
 			
 			// l_m_i_j_count = 0s
 			l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(j|i m l) TargLength, SourceLength, SourceIdx, TargetIdx
@@ -206,10 +208,10 @@ public class IBM2 implements WordAligner {
 						double delta_denominator_sum = 0.0;
 						// sum over the target words
 						for (int targ = 0; targ < numTargetWords; targ++) {
-							delta_denominator_sum += target_source_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(srcIndex) );
+							delta_denominator_sum += source_target_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(srcIndex) );
 						}
 						
-						double delta_ijlm =  target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)  ) / delta_denominator_sum;
+						double delta_ijlm =  source_target_tML.getCount( target, pair.getSourceWords().get(srcIndex)  ) / delta_denominator_sum;
 						
 						// add delta to the two counters
 						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
@@ -217,9 +219,9 @@ public class IBM2 implements WordAligner {
 						l_m_i_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
 			                     					Integer.valueOf(srcIndex), delta_ijlm);
 						
-						target_source_count.incrementCount(pair.getTargetWords().get(targetIdx), pair.getSourceWords().get(srcIndex),delta_ijlm);
+						source_target_count.incrementCount(pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targetIdx),delta_ijlm);
 						
-						//System.out.printf(" denom %f  delta %f  tML %f \n ", delta_denominator_sum, delta_ijlm, target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
+						//System.out.printf(" denom %f  delta %f  tML %f \n ", delta_denominator_sum, delta_ijlm, source_target_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
 						
 					}
 					
@@ -228,7 +230,7 @@ public class IBM2 implements WordAligner {
 			}// sentences
 			
 			//normalize count to become probs .. we dont set it directly to tML because we want to check for convergence.. we will do it later
-			target_source_count = Counters.conditionalNormalize(target_source_count);
+			source_target_count = Counters.conditionalNormalize(source_target_count);
 			
 			// do we need to represent c(jilm) and c(ilm) seperately as well do we need to rep c(f,e) and c(e) separately?
 			double error1=0.0;
@@ -238,7 +240,7 @@ public class IBM2 implements WordAligner {
 				List<String> sourceWords = pair.getSourceWords();
 				for(String source : sourceWords){
 					for(String target : targetWords){
-						error1 += Math.pow(target_source_tML.getCount(target, source) - target_source_count.getCount(target, source) ,2);
+						error1 += Math.pow(source_target_tML.getCount(source, target) - source_target_count.getCount(source, target) ,2);
 					}
 				}
 			}
@@ -252,14 +254,14 @@ public class IBM2 implements WordAligner {
 				
 			}// sentences
 			
-			if (((error1+error2) < 0.004) | (count > 200)){
+			if (((error1+error2) < 0.4) | (count > 40)){
 				converged=true;
 			}
 			//TODO print some stuff so we know how we are doing
 			System.out.printf("%d error1 %f error2 %f\n ",count, error1,error2);
 			
 			// update tML
-			target_source_tML = target_source_count;
+			source_target_tML = source_target_count;
 			
 			// update qML
 			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
