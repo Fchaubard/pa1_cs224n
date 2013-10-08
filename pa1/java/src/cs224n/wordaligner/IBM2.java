@@ -141,8 +141,6 @@ public class IBM2 implements WordAligner {
 		Random randomGenerator = new Random();
 		for(SentencePair pair : trainingPairs){
 			List<String> sourceWords = pair.getSourceWords();
-			//Add a Null word to the source list
-			sourceWords.add(NULL_WORD);
 			int numSourceWords = pair.getSourceWords().size();
 			int numTargetWords = sourceWords.size();
 				
@@ -200,9 +198,6 @@ public class IBM2 implements WordAligner {
 			
 			for(SentencePair pair : trainingPairs){
 				List<String> sourceWords = pair.getSourceWords();
-				//Add a Null word to the source list
-				
-				sourceWords.add(NULL_WORD);
 				int numSourceWords = pair.getSourceWords().size();
 				int numTargetWords = sourceWords.size();
 				for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
