@@ -9,7 +9,7 @@ import java.util.Random;
 /** 
  * IBM2 word alignment model 
  * 
- * @author Francois Chaubard
+ * @author Francois Chaubard, Colin Mayer
  */
 
 public class IBM2 implements WordAligner {
@@ -99,33 +99,33 @@ public class IBM2 implements WordAligner {
 			for(SentencePair pair : trainingPairs){
 				int numSourceWords = pair.getSourceWords().size();
 				int numTargetWords = pair.getTargetWords().size();
-				for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
-					String target = pair.getTargetWords().get(targetIdx);
-					
-					for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
-						// find delta = ... 
-						double delta_denominator_sum = 0.0;
-						// sum over the target words
-						for (int targ = 0; targ < numTargetWords; targ++) {
-							delta_denominator_sum += source_target_tML.getCount( pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targ) );
-						}
-						
+				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
+					// find delta = ... 
+					double delta_denominator_sum = 0.0;
+					// sum over the target words
+					for (int targ = 0; targ < numTargetWords; targ++) {
+						delta_denominator_sum += source_target_tML.getCount( pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targ) );
+					}
+
+					for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
+						String target = pair.getTargetWords().get(targetIdx);
+
 						double delta_ijlm =  source_target_tML.getCount( pair.getSourceWords().get(srcIndex), target  ) / delta_denominator_sum;
-						
+
 						// add delta to the two counters
 						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
-								                     getPairOfInts(srcIndex, targetIdx ), delta_ijlm);
+								getPairOfInts(srcIndex, targetIdx ), delta_ijlm);
 						l_m_i_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
-			                     					Integer.valueOf(srcIndex), delta_ijlm);
-						
+								Integer.valueOf(srcIndex), delta_ijlm);
+
 						source_target_count.incrementCount(pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targetIdx),delta_ijlm);
-						
+
 						//System.out.printf(" denom %f  delta %f  tML %f \n ", delta_denominator_sum, delta_ijlm, source_target_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
-						
+
 					}
-					
+
 				}
-				
+
 			}// sentences
 			
 			//normalize count to become probs .. we dont set it directly to tML because we want to check for convergence.. we will do it later
