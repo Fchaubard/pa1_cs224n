@@ -1,0 +1,33 @@
+AER Results (10k sentences)
+
+Development Sets
+French
+PMI 
+IBM1
+IBM2
+
+Hindi
+PMI
+IBM1
+IBM2
+
+Chinese
+PMI
+IBM1
+IBM2
+
+Test Sets
+French
+PMI
+IBM1
+IBM2
+
+Hindi
+PMI
+IBM1
+IBM2
+
+Chinese
+PMI
+IBM1
+IBM2
