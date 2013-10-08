@@ -42,7 +42,7 @@ public class IBM1 implements WordAligner {
 		return alignment;
 	}
 
-	public static CounterMap<String,String> buildPFE (List<SentencePair> trainingPairs) {
+	public static CounterMap<String,String> buildSTP (List<SentencePair> trainingPairs) {
 		//Initalize counters
 		CounterMap<String,String> source_target_prob = new CounterMap<String,String>(); // p(f|e)
 		CounterMap<String,String> source_target_count = new CounterMap<String,String>(); // c(f|e)
@@ -111,7 +111,7 @@ public class IBM1 implements WordAligner {
 	}
 
 	public void train(List<SentencePair> trainingPairs) {
-		source_target_prob	= IBM1.buildPFE(trainingPairs);		
+		source_target_prob	= IBM1.buildSTP(trainingPairs);		
 	}
 }
 
