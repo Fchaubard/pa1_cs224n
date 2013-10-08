@@ -151,7 +151,7 @@ public class IBM2 implements WordAligner {
 				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 					
 					// initially set count to be random numbers
-					l_m_i_j_qML.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ),1/numSourceWords);
+					l_m_i_j_qML.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ),1.0f / numSourceWords);
 					
 				}
 				
