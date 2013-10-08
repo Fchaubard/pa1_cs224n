@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * IBM1 models the problem
  * 
- * @author Francois Chaubard
+ * @author Francois Chaubard, Colin mayer
  */
 
 public class IBM1 implements WordAligner {
@@ -18,7 +18,7 @@ public class IBM1 implements WordAligner {
 
 	public Alignment align(SentencePair sentencePair) {
 		Alignment alignment = new Alignment();
-		
+
 		int numSourceWords = sentencePair.getSourceWords().size();
 		int numTargetWords = sentencePair.getTargetWords().size();
 
@@ -36,13 +36,19 @@ public class IBM1 implements WordAligner {
 					maxSourceIdx = srcIndex;
 				}
 			}
-			
+
 			alignment.addPredictedAlignment(targetIdx, maxSourceIdx);
 		}
 		return alignment;
 	}
 
-	public void setAllInCounterMap(List<SentencePair> trainingPairs, CounterMap<String,String> counterMap, double initValue){
+	public static CounterMap<String,String> buildPFE (List<SentencePair> trainingPairs) {
+		//Initalize counters
+		CounterMap<String,String> source_target_prob = new CounterMap<String,String>(); // p(f|e)
+		CounterMap<String,String> source_target_count = new CounterMap<String,String>(); // c(f|e)
+		boolean converged = false;
+
+		// initialize the probability to uniform
 		for(SentencePair pair : trainingPairs){
 			List<String> targetWords = pair.getTargetWords();
 			List<String> sourceWords = pair.getSourceWords();
@@ -50,29 +56,19 @@ public class IBM1 implements WordAligner {
 			sourceWords.add(NULL_WORD);
 			for(String source : sourceWords){
 				for(String target : targetWords){
-					counterMap.setCount(source, target, initValue);
+					source_target_prob.setCount(source, target, 1.0);
 				}
 			}
 		}
-	}
-	
-	public void train(List<SentencePair> trainingPairs) {
-		//Initalize counters
-		source_target_prob= new CounterMap<String,String>(); // p(f|e)
-		CounterMap<String,String> source_target_count = new CounterMap<String,String>(); // c(f|e)
-		boolean converged = false;
-		
-		// initialize the probability to uniform
-		setAllInCounterMap(trainingPairs,source_target_prob,1.0);
 		source_target_prob = Counters.conditionalNormalize(source_target_prob);
-		
+
 		double posterior_sum = 0.0;
 		int count=0;
 		while(!converged){
 			count++;
 
 			source_target_count = new CounterMap<String,String>(); 
-			
+
 			//For each sentence pair increment the counters
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
@@ -82,16 +78,16 @@ public class IBM1 implements WordAligner {
 					for(String source : sourceWords){
 						posterior_sum+=source_target_prob.getCount(source, target);
 					}
-							
+
 					for(String source : sourceWords){
 						source_target_count.incrementCount(source, target,  (source_target_prob.getCount(source, target)/posterior_sum));
 					}
 				}
 			}
-			
+
 			// normalize the probabilities
 			source_target_count = Counters.conditionalNormalize(source_target_count);
-			
+
 			// check if converged
 			double error =0.0;
 			for(SentencePair pair : trainingPairs){
@@ -106,13 +102,16 @@ public class IBM1 implements WordAligner {
 			if (error < 0.5 | count > 100){
 				converged=true;
 			}
-			
+
 			source_target_prob = source_target_count;
-				
+
 			System.out.printf("iteration number %d  error %f \n", count, error );
-			
-			
 		}
+		return source_target_prob;
+	}
+
+	public void train(List<SentencePair> trainingPairs) {
+		source_target_prob	= IBM1.buildPFE(trainingPairs);		
 	}
 }
 
