@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Random;
 
 /** 
- * IBM2 models the problem 
+ * IBM2 word alignment model 
  * 
  * @author Francois Chaubard
  */
@@ -48,85 +48,10 @@ public class IBM2 implements WordAligner {
 		return alignment;
 	}
 
-	public void setAllInCounterMap(List<SentencePair> trainingPairs, CounterMap<String,String> counterMap, double initValue){
-		for(SentencePair pair : trainingPairs){
-			List<String> targetWords = pair.getTargetWords();
-			List<String> sourceWords = pair.getSourceWords();
-			//Add a Null word to the source list
-			sourceWords.add(NULL_WORD);
-			for(String source : sourceWords){
-				for(String target : targetWords){
-					counterMap.setCount(source, target, initValue);
-				}
-			}
-		}
-	}
-
-	
 	public void train(List<SentencePair> trainingPairs) {
-		//Initalize counters
-		source_target_prob= new CounterMap<String,String>(); // p(f|e)
-		CounterMap<String,String> source_target_count = new CounterMap<String,String>(); // c(f|e)
-		boolean converged = false;
-		
-		// initialize the probability to uniform
-		setAllInCounterMap(trainingPairs,source_target_prob,1.0);
-		source_target_prob = Counters.conditionalNormalize(source_target_prob);
-		
-		double posterior_sum = 0.0;
-		int count=0;
-		while(!converged){
-			count++;
-
-			source_target_count = new CounterMap<String,String>(); 
-			
-			//For each sentence pair increment the counters
-			for(SentencePair pair : trainingPairs){
-				List<String> targetWords = pair.getTargetWords();
-				List<String> sourceWords = pair.getSourceWords();
-				
-				for(String target : targetWords){
-					posterior_sum = 0.0;
-					for(String source : sourceWords){
-						posterior_sum+=source_target_prob.getCount(source, target);
-					}
-							
-					for(String source : sourceWords){
-						source_target_count.incrementCount(source, target,  (source_target_prob.getCount(source, target)/posterior_sum));
-					}
-				}
-			}
-			
-			// normalize the probabilities
-			source_target_count = Counters.conditionalNormalize(source_target_count);
-			
-			// check if converged
-			double error =0.0;
-			for(SentencePair pair : trainingPairs){
-				List<String> targetWords = pair.getTargetWords();
-				List<String> sourceWords = pair.getSourceWords();
-				for(String source : sourceWords){
-					for(String target : targetWords){
-						error += Math.pow(source_target_count.getCount(source, target) - source_target_prob.getCount(source, target) ,2);
-					}
-				}
-			}
-			if (error < 0.5 | count > 100){
-				converged=true;
-			}
-			
-			source_target_prob = source_target_count;
-				
-			System.out.printf("iteration number %d  error %f \n", count, error );
-			
-			
-		}// while for Model 1
-		
+		//Initialize T(s|t) with IBM Model 1	
+		source_target_prob= IBM1.buildSTP(trainingPairs);
 		System.out.printf("Finished with Model 1 \n" );
-		
-		
-		
-		
 		
 		// setup for Model 2
 		l_m_i_j_qML = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
@@ -134,13 +59,13 @@ public class IBM2 implements WordAligner {
 		
 		// init t to probs from model 1
 		source_target_tML = source_target_prob;
-		
+
+		CounterMap<String,String> source_target_count;
 		// init l_m_i_j_count randomly
 		CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
 		CounterMap<Pair<Integer,Integer>,Integer> l_m_i_count = new CounterMap<Pair<Integer,Integer>,Integer>(); // c(i,l,m), TargLength, SourceLegnth, SourceIdx
 		
 		System.out.printf("Starting Model 2 \n" );
-		Random randomGenerator = new Random();
 		for(SentencePair pair : trainingPairs){
 			int numSourceWords = pair.getSourceWords().size();
 			int numTargetWords = pair.getTargetWords().size();
@@ -153,38 +78,12 @@ public class IBM2 implements WordAligner {
 					l_m_i_j_qML.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ),1.0f / numSourceWords);
 					
 				}
-				
-				//l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(maxSourceIdx, targetIdx ),1);
 			}
-		}// sentences
+		}
 		
-		// now init qML randomly by normalizing out l_m_i_j_count
-		/*
-		for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
-			
-			for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-				
-				double counter_ilm = 0;
-				// summing over target indexes (english aka j)
-				for (Pair<Integer,Integer> key2_sum_out: l_m_i_j_count.getCounter(key1).keySet()){
-					counter_ilm += l_m_i_j_count.getCount(key1,getPairOfInts(key2.getFirst(), key2_sum_out.getSecond()) );
-				}
-				l_m_i_count.setCount(key1,key2.getFirst(),counter_ilm);
-				l_m_i_j_qML.setCount(key1, key2, l_m_i_j_count.getCount(key1, key2) / counter_ilm);
-			}
-			
-		}// sentences
-		
-		*/
-		System.out.printf("Finished init for Model 2 \n" );
-		
-		// end of init
-		
-		
-		
-		
-		converged = false;
-		count=0;
+		//Convergence criteria
+		boolean converged = false;
+		int count=0;
 		
 		// begin training Model 2
 		while (!converged){
