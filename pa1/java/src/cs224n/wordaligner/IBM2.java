@@ -56,7 +56,7 @@ public class IBM2 implements WordAligner {
 			sourceWords.add(NULL_WORD);
 			for(String source : sourceWords){
 				for(String target : targetWords){
-					counterMap.setCount(target,  source, initValue);
+					counterMap.setCount(source, target, initValue);
 				}
 			}
 		}
@@ -208,10 +208,10 @@ public class IBM2 implements WordAligner {
 						double delta_denominator_sum = 0.0;
 						// sum over the target words
 						for (int targ = 0; targ < numTargetWords; targ++) {
-							delta_denominator_sum += source_target_tML.getCount( pair.getTargetWords().get(targ), pair.getSourceWords().get(srcIndex) );
+							delta_denominator_sum += source_target_tML.getCount( pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targ) );
 						}
 						
-						double delta_ijlm =  source_target_tML.getCount( target, pair.getSourceWords().get(srcIndex)  ) / delta_denominator_sum;
+						double delta_ijlm =  source_target_tML.getCount( pair.getSourceWords().get(srcIndex), target  ) / delta_denominator_sum;
 						
 						// add delta to the two counters
 						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
