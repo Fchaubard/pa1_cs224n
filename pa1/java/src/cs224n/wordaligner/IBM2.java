@@ -13,7 +13,7 @@ public class IBM2 implements WordAligner {
 
 	// Count of sentence pairs that contain source and target words
 	private CounterMap<String,String> source_target_prob; // t(e|f)
-	private CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_qML; // q(j|i,m,l) 
+	private CounterMap<Pair<Pair<Integer,Integer>,Integer>,Integer> l_m_i_j_qML; // q(j|i,m,l) 
 
 	// Count of source words appearing in the training set
 	//private Counter<String> source_count;
@@ -31,8 +31,8 @@ public class IBM2 implements WordAligner {
 			int maxSourceIdx = 0;
 			for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 				String source = sentencePair.getSourceWords().get(srcIndex);
-				double ai = source_target_prob.getCount(source, target);
-
+				double ai = l_m_i_j_qML.getCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx), srcIndex) *
+						source_target_prob.getCount(source, target);
 				if (currentMax < ai){
 					currentMax = ai;
 					maxSourceIdx = srcIndex;
@@ -50,11 +50,11 @@ public class IBM2 implements WordAligner {
 		System.out.printf("Finished with Model 1 \n" );
 
 		// setup for Model 2
-		l_m_i_j_qML = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // q(j|i, l, m) 
+		l_m_i_j_qML = new CounterMap<Pair<Pair<Integer,Integer>,Integer>,Integer>(); // q(j|i, l, m) 
 
 		// init l_m_i_j_count randomly
-		CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>> l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(f|e)
-		CounterMap<Pair<Integer,Integer>,Integer> l_m_i_count = new CounterMap<Pair<Integer,Integer>,Integer>(); // c(i,l,m), TargLength, SourceLegnth, SourceIdx
+		CounterMap<Pair<Pair<Integer,Integer>,Integer>, Integer> l_m_i_j_count = new CounterMap<Pair<Pair<Integer,Integer>,Integer>, Integer>(); // c(j|i,l,m)
+		//Counter<Pair<Pair<Integer,Integer>,Integer>> l_m_i_count = new Counter<Pair<Pair<Integer,Integer>,Integer>>(); // c(i,l,m)
 
 		System.out.printf("Starting Model 2 \n" );
 		for(SentencePair pair : trainingPairs){
@@ -63,17 +63,14 @@ public class IBM2 implements WordAligner {
 			for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 					// initially set count to be random numbers
-					l_m_i_j_qML.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(targetIdx, srcIndex ), 1.0f / numSourceWords);
+					l_m_i_j_qML.setCount(getIntegerTriple(numSourceWords,numTargetWords,targetIdx), srcIndex, 1.0);
 				}
 			}
 		}	
+		l_m_i_j_qML = Counters.conditionalNormalize(l_m_i_j_qML);
 		System.out.printf("Finished init for Model 2 \n" );
 
 		// end of init
-
-
-
-
 		boolean converged = false;
 		int count=0;
 
@@ -85,66 +82,57 @@ public class IBM2 implements WordAligner {
 			CounterMap<String,String> source_target_count = new CounterMap<String,String>(); // c(e,f)
 
 			// l_m_i_j_count = 0s
-			l_m_i_j_count = new CounterMap<Pair<Integer,Integer>,Pair<Integer,Integer>>(); // c(j|i m l) TargLength, SourceLength, SourceIdx, TargetIdx
-			l_m_i_count = new CounterMap<Pair<Integer,Integer>,Integer>(); // c(i,l,m), TargLength, SourceLegnth, SourceIdx
+			l_m_i_j_count = new CounterMap<Pair<Pair<Integer,Integer>,Integer>, Integer>();
+			//l_m_i_count = new Counter<Pair<Pair<Integer,Integer>,Integer>>();
 
 			for(SentencePair pair : trainingPairs){
 				int numSourceWords = pair.getSourceWords().size();
 				int numTargetWords = pair.getTargetWords().size();
-				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
+				for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 					// find delta = ... 
 					double delta_denominator_sum = 0.0;
 					// sum over the target words
-					for (int targ = 0; targ < numTargetWords; targ++) {
-						delta_denominator_sum += l_m_i_j_qML.getCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(targ,srcIndex)) *
-								source_target_tML.getCount(pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targ));
+					for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
+						delta_denominator_sum += l_m_i_j_qML.getCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx),srcIndex) *
+								source_target_prob.getCount(pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targetIdx));
 					}
-
-					for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
-
-						double delta_ijlm = l_m_i_j_qML.getCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(targetIdx,srcIndex)) *
-								source_target_tML.getCount(pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targetIdx)) / delta_denominator_sum;
+					for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
+						double delta_ijlm = l_m_i_j_qML.getCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx),srcIndex) *
+								source_target_prob.getCount(pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targetIdx)) / 
+								delta_denominator_sum;
 
 						// add delta to the counters
-						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
-								getPairOfInts(targetIdx, srcIndex ), delta_ijlm);
-						l_m_i_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
-								targetIdx, delta_ijlm);
-						//target_source_count.incrementCount(pair.getTargetWords().get(targetIdx), pair.getSourceWords().get(srcIndex),delta_ijlm);
+						l_m_i_j_count.incrementCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx),srcIndex, delta_ijlm);
+						//l_m_i_count.incrementCount(getIntegerTriple(numSourceWords, numTargetWords,targetIdx), delta_ijlm);
 						source_target_count.incrementCount(pair.getSourceWords().get(srcIndex), pair.getTargetWords().get(targetIdx), delta_ijlm);
-						//target_count.incrementCount(pair.getTargetWords().get(targetIdx),delta_ijlm);
-
-						//System.out.printf(" denom %f  delta %f  tML %f \n ", delta_denominator_sum, delta_ijlm, target_source_tML.getCount( target, pair.getSourceWords().get(srcIndex)) );
-
 					}
 
 				}
 
-			}// sentences
-
+			}
 			//normalize count to become probs .. we dont set it directly to tML because we want to check for convergence.. we will do it later
 			source_target_count = Counters.conditionalNormalize(source_target_count);
-
+			l_m_i_j_count = Counters.conditionalNormalize(l_m_i_j_count);
+			
 			// do we need to represent c(jilm) and c(ilm) seperately as well do we need to rep c(f,e) and c(e) separately?
 			double error1=0.0;
 			double error2 =0.0;
+			int numSourceWords,numTargetWords;
+			String source,target;
 			for(SentencePair pair : trainingPairs){
-				List<String> targetWords = pair.getTargetWords();
-				List<String> sourceWords = pair.getSourceWords();
-				for(String source : sourceWords){
-					for(String target : targetWords){
-						error1 += Math.pow(source_target_tML.getCount(source, target) - source_target_count.getCount(source, target) ,2);
+				numSourceWords = pair.getSourceWords().size();
+				numTargetWords = pair.getTargetWords().size();
+				for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
+					for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
+						source = pair.getSourceWords().get(srcIndex);
+						target = pair.getTargetWords().get(targetIdx);
+						error1 += Math.pow(source_target_prob.getCount(source, target) - source_target_count.getCount(source, target) ,2);
+						// summing over target indexes (english aka j)
+						error2 += Math.pow(l_m_i_j_qML.getCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx), srcIndex)   -   l_m_i_j_count.getCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx),srcIndex),2);// / l_m_i_count.getCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx))  ,2);
+						l_m_i_j_qML.setCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx), srcIndex, l_m_i_j_count.getCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx),srcIndex));// / l_m_i_count.getCount(getIntegerTriple(numSourceWords, numTargetWords, targetIdx)));
 					}
 				}
 			}
-			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
-
-				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-					// summing over target indexes (english aka j)
-					error2 += Math.pow(  l_m_i_j_qML.getCount(key1, key2)   -   l_m_i_j_count.getCount(key1, key2) / l_m_i_count.getCount(key1,key2.getFirst())  ,2);
-				}
-
-			}// sentences
 
 			if (((error1+error2) < 0.5) | (count > 50)){
 				converged=true;
@@ -153,24 +141,18 @@ public class IBM2 implements WordAligner {
 			System.out.printf("%d error1 %f error2 %f\n ",count, error1,error2);
 
 			// update tML
-			//target_source_tML = target_source_count;
-			source_target_tML = source_target_count;
-
-			// update qML
-			for(Pair<Integer,Integer> key1: l_m_i_j_count.keySet()){
-				for (Pair<Integer,Integer> key2: l_m_i_j_count.getCounter(key1).keySet()){
-					// summing over target indexes (english aka j)
-					l_m_i_j_qML.setCount(key1, key2, l_m_i_j_count.getCount(key1, key2) / l_m_i_count.getCount(key1,key2.getFirst()));
-				}
-			}// sentences
+			source_target_prob = source_target_count;
+			l_m_i_j_qML = l_m_i_j_count;
+			
 		}// while converge loop
 
 		System.out.printf("Finished training IBM2\n ");
 
 	}
-
-	private Pair<Integer,Integer> getPairOfInts(int first, int second){
-		return new Pair<Integer,Integer>(Integer.valueOf(first ), Integer.valueOf(second ));
+	
+	private Pair<Pair<Integer,Integer>,Integer> getIntegerTriple(int first, int second, int third){
+		Pair<Integer,Integer> p1 = new Pair(first,second);
+		return (new Pair(p1,third));
 	}
 }
 
