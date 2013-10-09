@@ -1,4 +1,4 @@
-package cs224n.wordaligner;  
+package cs224n.wordaligner;
 
 
 import cs224n.util.*;

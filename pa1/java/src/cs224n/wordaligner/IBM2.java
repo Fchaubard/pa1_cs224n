@@ -99,7 +99,7 @@ public class IBM2 implements WordAligner {
 			for(SentencePair pair : trainingPairs){
 				int numSourceWords = pair.getSourceWords().size();
 				int numTargetWords = pair.getTargetWords().size();
-<<<<<<< HEAD
+
 				for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 					String target = pair.getTargetWords().get(targetIdx);
 					
@@ -114,21 +114,7 @@ public class IBM2 implements WordAligner {
 						
 						double delta_ijlm =  l_m_i_j_qML.getCount(getPairOfInts(pair.getTargetWords().size(),pair.getSourceWords().size()), getPairOfInts(srcIndex,targetIdx))*source_target_tML.getCount( pair.getSourceWords().get(srcIndex), target  ) / delta_denominator_sum;
 						
-=======
-				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
-					// find delta = ... 
-					double delta_denominator_sum = 0.0;
-					// sum over the target words
-					for (int targ = 0; targ < numTargetWords; targ++) {
-						delta_denominator_sum += source_target_tML.getCount( pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targ) );
-					}
 
-					for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
-						String target = pair.getTargetWords().get(targetIdx);
-
-						double delta_ijlm =  source_target_tML.getCount( pair.getSourceWords().get(srcIndex), target  ) / delta_denominator_sum;
-
->>>>>>> 515ec1cfbc04ef27362610b0ceccebbc16e15005
 						// add delta to the two counters
 						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
 								getPairOfInts(srcIndex, targetIdx ), delta_ijlm);
