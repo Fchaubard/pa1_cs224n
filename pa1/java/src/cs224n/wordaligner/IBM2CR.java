@@ -65,8 +65,8 @@ public class IBM2CR implements WordAligner {
 		target_source_t= new CounterMap<String,String>(); // t(ei|fj)
 		source_target_d= new CounterMap<Integer,Integer>(); // d(i|j) 
 
-		HashSet<String> source_dict = new HashSet<String>();
-		HashSet<String> target_dict = new HashSet<String>();
+		//HashSet<String> source_dict = new HashSet<String>();
+		//HashSet<String> target_dict = new HashSet<String>();
 		HashMap<String,Set<String>> target_D = new HashMap<String,Set<String>>(); // c(f|e)
 		int M=0;
 		int L=0;
@@ -88,8 +88,8 @@ public class IBM2CR implements WordAligner {
 				target_D.put(target , set);
 				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 					String source = pair.getSourceWords().get(srcIndex);
-					source_dict.add(source);
-					target_dict.add(target);
+					//source_dict.add(source);
+					//target_dict.add(target);
 					target_D.get(target).add(source);
 				}
 			}
@@ -111,9 +111,11 @@ public class IBM2CR implements WordAligner {
 		}*/
 		
 		// init t
-		for (String source : source_dict) {
-			for (String target : target_dict) {
-				target_source_t.setCount(target, source, 1.0/target_D.get(target).size() );
+		for(SentencePair pair : trainingPairs){
+			for (String source : pair.getSourceWords()) {
+				for (String target : pair.getTargetWords()) {
+					target_source_t.setCount(target, source, 1.0/target_D.get(target).size() );
+				}
 			}
 		}
 		
