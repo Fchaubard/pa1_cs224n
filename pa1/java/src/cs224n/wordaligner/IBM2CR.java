@@ -127,7 +127,7 @@ public class IBM2CR implements WordAligner {
 		}
 		
 		System.out.printf("Finished init for Model 2 Convex \n" );
-		int K=numSentences/B;
+		int K=(int) Math.floor( numSentences/B );
 		for (int s = 1; s < S; s++) {
 			
 			for (int b = 1; b < K; b++) {
@@ -178,7 +178,10 @@ public class IBM2CR implements WordAligner {
 				}// subset of sentences 
 				
 				// increment t
-				for(SentencePair pair : trainingPairs){
+				sentence_begin=b*K-K;
+				for (int sentenceIdx = sentence_begin; sentenceIdx < (sentence_begin+K); sentenceIdx++) {
+					
+					SentencePair pair = trainingPairs.get(sentenceIdx);
 					// add to target sentence? it says to do so ... but doesnt make sense
 					pair.targetWords.add(NULL_WORD);
 					int numSourceWords = pair.getSourceWords().size();
@@ -207,9 +210,6 @@ public class IBM2CR implements WordAligner {
 		System.out.printf("Finished training Model 2 Convex \n" );
 		
 	}
-	
-	private Pair<Integer,Integer> getPairOfInts(int first, int second){
-		return new Pair<Integer,Integer>(Integer.valueOf(first ), Integer.valueOf(second ));
-	}
+
 }
 
