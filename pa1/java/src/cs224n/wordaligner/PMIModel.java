@@ -7,7 +7,7 @@ import java.util.List;
  * Pointwise mutual information (PMI) model. Aligns words based on the
  * frequency with which they occur in sentence pairs 
  * 
- * @author Colin Mayer
+ * @author Colin Mayer, Francois Chaubard
  */
 
 public class PMIModel implements WordAligner {
