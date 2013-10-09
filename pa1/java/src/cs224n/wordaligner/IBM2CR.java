@@ -6,7 +6,6 @@ import cs224n.util.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 
 /** 
@@ -14,6 +13,7 @@ import java.util.Set;
  * 
  * @author Francois Chaubard
  */
+
 
 public class IBM2CR implements WordAligner {
 
@@ -24,6 +24,7 @@ public class IBM2CR implements WordAligner {
 	// Count of source words appearing in the training set
 	//private Counter<String> source_count;
 
+	@Override
 	public Alignment align(SentencePair sentencePair) {
 		Alignment alignment = new Alignment();
 		
@@ -50,21 +51,7 @@ public class IBM2CR implements WordAligner {
 		return alignment;
 	}
 
-	public void setAllInCounterMap(List<SentencePair> trainingPairs, CounterMap<String,String> counterMap, double initValue){
-		for(SentencePair pair : trainingPairs){
-			List<String> targetWords = pair.getTargetWords();
-			List<String> sourceWords = pair.getSourceWords();
-			//Add a Null word to the source list
-			sourceWords.add(NULL_WORD);
-			for(String source : sourceWords){
-				for(String target : targetWords){
-					counterMap.setCount(source, target, initValue);
-				}
-			}
-		}
-	}
-
-	
+	@Override
 	public void train(List<SentencePair> trainingPairs) {
 		//Test params
 		int S=5; //num iterations

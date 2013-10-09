@@ -12,6 +12,7 @@ import java.util.List;
  */
 public interface WordAligner extends Serializable {
 
+	
   /**
    * A convenient string for the NULL word (for words aligned to NULL)
    */
