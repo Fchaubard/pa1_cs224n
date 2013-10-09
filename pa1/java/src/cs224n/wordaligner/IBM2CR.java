@@ -5,6 +5,7 @@ import cs224n.util.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -83,6 +84,8 @@ public class IBM2CR implements WordAligner {
 			
 			for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 				String target = pair.getTargetWords().get(targetIdx);
+				Set<String> set = new HashSet<String>();
+				target_D.put(target , set);
 				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 					String source = pair.getSourceWords().get(srcIndex);
 					source_dict.add(source);
