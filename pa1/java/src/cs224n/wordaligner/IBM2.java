@@ -150,7 +150,7 @@ public class IBM2 implements WordAligner {
 				for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 					
 					// initially set count to be random numbers
-					l_m_i_j_qML.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ),1.0f / numSourceWords);
+					l_m_i_j_qML.setCount(getPairOfInts(numTargetWords,numSourceWords), getPairOfInts(srcIndex, targetIdx ), 1.0f /numSourceWords );
 					
 				}
 				
@@ -207,11 +207,12 @@ public class IBM2 implements WordAligner {
 						// find delta = ... 
 						double delta_denominator_sum = 0.0;
 						// sum over the target words
-						for (int targ = 0; targ < numTargetWords; targ++) {
-							delta_denominator_sum += source_target_tML.getCount( pair.getSourceWords().get(srcIndex),pair.getTargetWords().get(targ) );
+						for (int src = 0; src < numSourceWords; src++) {
+							delta_denominator_sum +=    l_m_i_j_qML.getCount(getPairOfInts(pair.getTargetWords().size(), pair.getSourceWords().size()), getPairOfInts(src,targetIdx))* 
+									source_target_tML.getCount( pair.getSourceWords().get(src), pair.getTargetWords().get(targetIdx) );
 						}
 						
-						double delta_ijlm =  source_target_tML.getCount( pair.getSourceWords().get(srcIndex), target  ) / delta_denominator_sum;
+						double delta_ijlm =  l_m_i_j_qML.getCount(getPairOfInts(pair.getTargetWords().size(),pair.getSourceWords().size()), getPairOfInts(srcIndex,targetIdx))*source_target_tML.getCount( pair.getSourceWords().get(srcIndex), target  ) / delta_denominator_sum;
 						
 						// add delta to the two counters
 						l_m_i_j_count.incrementCount(getPairOfInts(numTargetWords, numSourceWords ),    
@@ -233,8 +234,8 @@ public class IBM2 implements WordAligner {
 			source_target_count = Counters.conditionalNormalize(source_target_count);
 			
 			// do we need to represent c(jilm) and c(ilm) seperately as well do we need to rep c(f,e) and c(e) separately?
-			double error1=0.0;
-			double error2 =0.0;
+			double error1 = 0.0;
+			double error2 = 0.0;
 			for(SentencePair pair : trainingPairs){
 				List<String> targetWords = pair.getTargetWords();
 				List<String> sourceWords = pair.getSourceWords();
@@ -254,9 +255,10 @@ public class IBM2 implements WordAligner {
 				
 			}// sentences
 			
-			if (((error1+error2) < 0.4) | (count > 40)){
+			if (((error1+error2) < 0.04) | (count > 50)){
 				converged=true;
 			}
+			
 			//TODO print some stuff so we know how we are doing
 			System.out.printf("%d error1 %f error2 %f\n ",count, error1,error2);
 			

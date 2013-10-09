@@ -27,6 +27,7 @@ import cs224n.wordaligner.WordAligner;
  */
 public final class WordAlignmentTester {
 
+	
   /**
    * Default location of the training and test corpora.
    */
