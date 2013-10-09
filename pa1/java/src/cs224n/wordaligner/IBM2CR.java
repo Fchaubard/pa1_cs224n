@@ -65,8 +65,8 @@ public class IBM2CR implements WordAligner {
 		target_source_t= new CounterMap<String,String>(); // t(ei|fj)
 		source_target_d= new CounterMap<Integer,Integer>(); // d(i|j) 
 
-		ArrayList<String> source_dict = new ArrayList<String>();
-		ArrayList<String> target_dict = new ArrayList<String>();
+		HashSet<String> source_dict = new HashSet<String>();
+		HashSet<String> target_dict = new HashSet<String>();
 		HashMap<String,Set<String>> target_D = new HashMap<String,Set<String>>(); // c(f|e)
 		int M=0;
 		int L=0;
