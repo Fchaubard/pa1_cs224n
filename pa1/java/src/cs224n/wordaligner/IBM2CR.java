@@ -176,18 +176,25 @@ public class IBM2CR implements WordAligner {
 				}// subset of sentences 
 				
 				// increment t
-				for (String source : source_dict) {
-					for (String target : target_dict) {
-						target_source_t.setCount(target, source, target_source_t.getCount(target, source)*Math.exp(gamma*target_source_alpha.getCount(target,source) /B) );
+				for(SentencePair pair : trainingPairs){
+					// add to target sentence? it says to do so ... but doesnt make sense
+					pair.targetWords.add(NULL_WORD);
+					int numSourceWords = pair.getSourceWords().size();
+					int numTargetWords = pair.getTargetWords().size();
+					
+					for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
+						String target = pair.getTargetWords().get(targetIdx);
+						Set<String> set = new HashSet<String>();
+						target_D.put(target , set);
+						for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
+							String source = pair.getSourceWords().get(srcIndex);
+							target_source_t.setCount(target, source, target_source_t.getCount(target, source)*Math.exp(gamma*target_source_alpha.getCount(target,source) /B) );
+							source_target_d.setCount(srcIndex, targetIdx, source_target_d.getCount(srcIndex, targetIdx)*Math.exp(gamma*source_target_beta.getCount(srcIndex,targetIdx) /B) );
+							
+						}
 					}
 				}
-				
-				// increment d
-				for (int targetIdx = 0; targetIdx < mk; targetIdx++) {
-					for (int srcIndex = 0; srcIndex < lk; srcIndex++) {
-						source_target_d.setCount(srcIndex, targetIdx, source_target_d.getCount(srcIndex, targetIdx)*Math.exp(gamma*source_target_beta.getCount(srcIndex,targetIdx) /B) );
-					}
-				}
+					
 				
 				target_source_t = Counters.conditionalNormalize(target_source_t);
 				source_target_d = Counters.conditionalNormalize(source_target_d);
