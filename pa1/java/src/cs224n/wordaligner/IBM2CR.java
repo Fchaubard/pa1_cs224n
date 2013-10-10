@@ -221,7 +221,7 @@ public class IBM2CR implements WordAligner {
 				
 				
 				//TODO print some stuff so we know how we are doing
-				System.out.printf("step=%d b=%d %d error1 %f error2 %f\n ",s,b, error1,error2);
+				System.out.printf("step=%d b=%d error1 %f error2 %f\n ",s,b, error1,error2);
 				
 			}// subset
 		}//iterations
