@@ -55,7 +55,7 @@ public class IBM2CR implements WordAligner {
 	@Override
 	public void train(List<SentencePair> trainingPairs) {
 		//Test params
-		int S=5; //num iterations
+		int S=7; //num iterations
 		double lambda=0.001; //regularization
 		double gamma=0.5; //step size
 		int B=100; //batch size
@@ -114,7 +114,7 @@ public class IBM2CR implements WordAligner {
 		for(SentencePair pair : trainingPairs){
 			for (String source : pair.getSourceWords()) {
 				for (String target : pair.getTargetWords()) {
-					target_source_t.setCount(target, source, 1.0/target_D.get(target).size() );
+					target_source_t.setCount(target, source, 1.0f/target_D.get(target).size() );
 				}
 			}
 		}
@@ -122,13 +122,13 @@ public class IBM2CR implements WordAligner {
 		// init d
 		for (int targetIdx = 0; targetIdx < M; targetIdx++) {
 			for (int srcIndex = 0; srcIndex < L; srcIndex++) {
-				source_target_d.setCount(srcIndex, targetIdx, 1.0/(1+L));
+				source_target_d.setCount(srcIndex, targetIdx, 1.0f/(1+L));
 			}
 		}
 		
 		System.out.printf("Finished init for Model 2 Convex \n" );
 		int K=(int) Math.floor( numSentences/B );
-		for (int s = 1; s < S; s++) {
+		for (int s = 0; s < S; s++) {
 			
 			for (int b = 1; b < K; b++) {
 				
@@ -160,15 +160,15 @@ public class IBM2CR implements WordAligner {
 								Q_denominator += Math.min(target_source_t.getCount( pair.getTargetWords().get(targ),source) , source_target_d.getCount(srcIndex,targ));	
 							}
 							
-							double R = 1.0 / (2*(lambda + R_denominator));
-							double Q = 1.0/ (2*(lambda + Q_denominator));
+							double R = 1.0f / (2*(lambda + R_denominator));
+							double Q = 1.0f / (2*(lambda + Q_denominator));
 							
 							target_source_alpha.incrementCount(target, source, R);
 							
 							if(target_source_t.getCount(target,source) <= source_target_d.getCount(srcIndex, targetIdx) ){
 								target_source_alpha.incrementCount(target, source, Q);
 							}else{
-								source_target_beta.incrementCount(srcIndex, targetIdx,Q);
+								source_target_beta.incrementCount(srcIndex, targetIdx, Q);
 							}
 							
 						}//source words
@@ -183,7 +183,6 @@ public class IBM2CR implements WordAligner {
 					
 					SentencePair pair = trainingPairs.get(sentenceIdx);
 					// add to target sentence? it says to do so ... but doesnt make sense
-					pair.targetWords.add(NULL_WORD);
 					int numSourceWords = pair.getSourceWords().size();
 					int numTargetWords = pair.getTargetWords().size();
 					
