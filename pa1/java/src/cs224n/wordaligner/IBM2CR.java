@@ -76,7 +76,7 @@ public class IBM2CR implements WordAligner {
 		// Find M, L, E, F, and D(e)
 		for(SentencePair pair : trainingPairs){
 			// add to target sentence? it says to do so ... but doesnt make sense
-			pair.targetWords.add(NULL_WORD);
+			pair.sourceWords.add(NULL_WORD);
 			int numSourceWords = pair.getSourceWords().size();
 			int numTargetWords = pair.getTargetWords().size();
 			M=Math.max(numTargetWords, M);
