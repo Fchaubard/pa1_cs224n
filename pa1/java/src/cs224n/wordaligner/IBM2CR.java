@@ -39,7 +39,7 @@ public class IBM2CR implements WordAligner {
 			int maxSourceIdx = 0;
 			for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 				String source = sentencePair.getSourceWords().get(srcIndex);
-				double ai = source_target_d.getCount(srcIndex,targetIdx) * target_source_t.getCount(target,source);
+				double ai = source_target_d.getCount(srcIndex,targetIdx) * target_source_t.getCount(source,target);
 
 				if (currentMax < ai){
 					currentMax = ai;
@@ -114,7 +114,7 @@ public class IBM2CR implements WordAligner {
 		for(SentencePair pair : trainingPairs){
 			for (String source : pair.getSourceWords()) {
 				for (String target : pair.getTargetWords()) {
-					target_source_t.setCount(target, source, 1.0f/target_D.get(target).size() );
+					target_source_t.setCount(source, target, 1.0f/target_D.get(target).size() );
 				}
 			}
 		}
@@ -156,17 +156,17 @@ public class IBM2CR implements WordAligner {
 							double Q_denominator = 0;
 							
 							for (int targ = 0; targ < numTargetWords; targ++){
-								R_denominator += target_source_t.getCount( pair.getTargetWords().get(targ),source);
-								Q_denominator += Math.min(target_source_t.getCount( pair.getTargetWords().get(targ),source) , source_target_d.getCount(srcIndex,targ));	
+								R_denominator += target_source_t.getCount( source,pair.getTargetWords().get(targ));
+								Q_denominator += Math.min(target_source_t.getCount( source,pair.getTargetWords().get(targ)) , source_target_d.getCount(srcIndex,targ));	
 							}
 							
 							double R = 1.0f / (2*(lambda + R_denominator));
 							double Q = 1.0f / (2*(lambda + Q_denominator));
 							
-							target_source_alpha.incrementCount(target, source, R);
+							target_source_alpha.incrementCount( source,target, R);
 							
-							if(target_source_t.getCount(target,source) <= source_target_d.getCount(srcIndex, targetIdx) ){
-								target_source_alpha.incrementCount(target, source, Q);
+							if(target_source_t.getCount(source,target) <= source_target_d.getCount(srcIndex, targetIdx) ){
+								target_source_alpha.incrementCount( source,target, Q);
 							}else{
 								source_target_beta.incrementCount(srcIndex, targetIdx, Q);
 							}
@@ -188,11 +188,9 @@ public class IBM2CR implements WordAligner {
 					
 					for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
 						String target = pair.getTargetWords().get(targetIdx);
-						Set<String> set = new HashSet<String>();
-						target_D.put(target , set);
 						for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
 							String source = pair.getSourceWords().get(srcIndex);
-							target_source_t.setCount(target, source, target_source_t.getCount(target, source)*Math.exp(gamma*target_source_alpha.getCount(target,source) /B) );
+							target_source_t.setCount( source, target, target_source_t.getCount( source,target)*Math.exp(gamma*target_source_alpha.getCount(source,target) /B) );
 							source_target_d.setCount(srcIndex, targetIdx, source_target_d.getCount(srcIndex, targetIdx)*Math.exp(gamma*source_target_beta.getCount(srcIndex,targetIdx) /B) );
 							
 						}
