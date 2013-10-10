@@ -198,10 +198,31 @@ public class IBM2CR implements WordAligner {
 				}
 					
 				
-				target_source_t = Counters.conditionalNormalize(target_source_t);
-				source_target_d = Counters.conditionalNormalize(source_target_d);
+				CounterMap<String,String> target_source_t_temp = Counters.conditionalNormalize(target_source_t);
+				CounterMap<Integer,Integer> source_target_d_temp = Counters.conditionalNormalize(source_target_d);
 				
-				System.out.printf("step=%d b=%d\n",s,b);
+				double error1 = 0.0;
+				double error2 = 0.0;
+				for(SentencePair pair : trainingPairs){
+					int numSourceWords = pair.getSourceWords().size();
+					int numTargetWords = pair.getTargetWords().size();
+					
+					for (int targetIdx = 0; targetIdx < numTargetWords; targetIdx++) {
+						String target = pair.getTargetWords().get(targetIdx);
+						for (int srcIndex = 0; srcIndex < numSourceWords; srcIndex++) {
+							String source = pair.getSourceWords().get(srcIndex);
+							error1 += Math.pow(target_source_t_temp.getCount(source, target) - target_source_t.getCount(source, target) ,2);
+							error2 += Math.pow(source_target_d_temp.getCount(targetIdx,srcIndex ) - source_target_d.getCount(targetIdx,srcIndex ) ,2);
+						}
+					}
+				}
+				target_source_t=target_source_t_temp;
+				source_target_d=source_target_d_temp;
+				
+				
+				//TODO print some stuff so we know how we are doing
+				System.out.printf("step=%d b=%d %d error1 %f error2 %f\n ",s,b, error1,error2);
+				
 			}// subset
 		}//iterations
 		System.out.printf("Finished training Model 2 Convex \n" );
